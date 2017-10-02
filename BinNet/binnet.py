@@ -41,21 +41,20 @@ y = T.lvector('y')
 # The following variables are defined as shared. Since they will have initial
 # values.
 # Lets use 5*5 filter
-w_1 = theano.shared((np.random.rand(20, 1, 5, 5) - 0.5) * 2 * np.sqrt(1.5 / (45.0)), 'w_1')
+w_1 = theano.shared((np.random.rand(20, 1, 5, 5) - 0.5) * 2 * np.sqrt(6 / (45.0)), 'w_1')
 b_1 = theano.shared(np.zeros(20), 'b_1')
 
-w_2 = theano.shared((np.random.rand(50, 20, 5, 5) - 0.5) * 2 * np.sqrt(1.5 / (550.0)), 'w_2')
+w_2 = theano.shared((np.random.rand(50, 20, 5, 5) - 0.5) * 2 * np.sqrt(6 / (550.0)), 'w_2')
 b_2 = theano.shared(np.zeros(50), 'b_2')
 
-w_3 = theano.shared((np.random.rand(4 * 4 * 50, 500) - 0.5) * 2 * np.sqrt(1.5 / (1300.0)), 'w_3')
+w_3 = theano.shared((np.random.rand(4 * 4 * 50, 500) - 0.5) * 2 * np.sqrt(6 / (1300.0)), 'w_3')
 b_3 = theano.shared(np.zeros(500), 'b_3')
 
-w_4 = theano.shared((np.random.randn(500, 10) - 0.5) * 2 * np.sqrt(1.5 / (510.0)), 'w_4')
+w_4 = theano.shared((np.random.randn(500, 10) - 0.5) * 2 * np.sqrt(6 / (510.0)), 'w_4')
 b_4 = theano.shared(np.zeros(10), 'b_4')
 
 # Computational Graph
 w1_b = binarize_theano(w_1)
-#import ipdb; ipdb.set_trace()  # <--- *BAMF!*
 pa_1 = T.nnet.conv2d(x, w1_b) + b_1.dimshuffle('x', 0, 'x', 'x')
 a_1 = pool.pool_2d(T.tanh(pa_1), (2, 2), ignore_border=True)
 
@@ -79,13 +78,13 @@ params  = [w_1, b_1, w_2 , b_2, w_3, b_3, w_4, b_4]
 dparams = T.grad(cost, params_b)
 #dparams = T.grad(cost, params)
 
-alpha = 0.001
+alpha = 0.15
 updates = []
 
 for i, p, dp in zip(range(len(params)), params, dparams):
     p_val = p.get_value()
     if len(p_val.shape) > 1:
-        updates += [(p, (clip(p) - alpha * dp))]
+        updates += [(p, clip((p - alpha * dp)))]
     else:
         updates += [(p, p - alpha * dp)]
 
@@ -111,5 +110,5 @@ for e in range(20):
         #import ipdb; ipdb.set_trace()  # <--- *BAMF!*
         cost = f_train(batch_img, batch_tar)
         w1, w1_b = f_test()
-        #print w_1.get_value()
+        #print w1_b
         #import ipdb; ipdb.set_trace()  # <--- *BAMF!*
