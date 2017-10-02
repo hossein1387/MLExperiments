@@ -21,7 +21,6 @@ alpha = 0.15
 def clip(x):
     return T.clip((x+1.)/2.,0,1)
 
-
 def binarize_theano(W):
     Wb = clip(W)
     Wb = T.cast(srng.binomial(n=1, p=Wb, size=T.shape(Wb)), theano.config.floatX)
@@ -76,11 +75,11 @@ y_hat = a_4
 ##################################################################################
 cost = T.mean(T.nnet.categorical_crossentropy(y_hat, y))
 cost.name = 'CE'
-params_b = [w1_b, b_1, w2_b , b_2, w3_b, b_3, w4_b, b_4]
-params  = [w_1, b_1, w_2 , b_2, w_3, b_3, w_4, b_4]
-dparams = T.grad(cost, params_b)
-
-updates = []
+params_b  = [w1_b, b_1, w2_b , b_2, w3_b, b_3, w4_b, b_4] # Binary weights
+params    = [w_1, b_1, w_2 , b_2, w_3, b_3, w_4, b_4]     # Float weights
+# Computing gradients with regards to binary weights
+dparams   = T.grad(cost, params_b)
+updates   = []
 
 for i, p, dp in zip(range(len(params)), params, dparams):
     p_val = p.get_value()
