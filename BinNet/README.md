@@ -1,4 +1,4 @@
-## Simple Implementation Of [BinaryConnect](https://arxiv.org/abs/1511.00363)
+## Simple Implementation of [BinaryConnect](https://arxiv.org/abs/1511.00363)
 
 My Implementation of BinaryConnect. Read the paper [here](https://arxiv.org/abs/1511.00363)
 
