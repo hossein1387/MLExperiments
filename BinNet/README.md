@@ -1,6 +1,6 @@
 ## Simple Implementation of [BinaryConnect](https://arxiv.org/abs/1511.00363)
 
-My Implementation of BinaryConnect. Read the paper [here](https://arxiv.org/abs/1511.00363)
+My Implementation of BinaryConnect. Read the paper [here](https://arxiv.org/abs/1511.00363). Here is the original implementation of [BinaryConnect](https://github.com/MatthieuCourbariaux/BinaryConnect).
 
 Here is how the layers are computed
 
