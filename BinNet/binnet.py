@@ -10,10 +10,10 @@ from theano.sandbox.rng_mrg import MRG_RandomStreams as RandomStreams
 ##################################################################################
 # Globals
 ##################################################################################
-srng =  RandomStreams(lasagne.random.get_rng().randint(1, 2147462579))
+srng =  RandomStreams(lasagne.random.get_rng().randint(1, 214))
 data_img = np.load('train_images.npy').reshape((600, 100, 1, 28, 28)) # input dataset
 data_tar = np.load('train_labels.npy').reshape((600, 100)).astype('int64')
-alpha = 0.15
+alpha = 0.001
 
 ##################################################################################
 # Utility Functions
@@ -38,45 +38,61 @@ y = T.lvector('y')
 # The following variables are defined as shared. Since they will have initial
 # values.
 # Lets use 5*5 filter
-w_1 = theano.shared((np.random.rand(20, 1, 5, 5) - 0.5) * 2 * np.sqrt(6 / (45.0)), 'w_1')
-b_1 = theano.shared(np.zeros(20), 'b_1')
+w_1   = theano.shared((np.random.rand(20, 1, 5, 5) - 0.5) * 2 * np.sqrt(1.5 / (45.0)), 'w_1')
+gama_1 = theano.shared(np.ones(20), 'gama_1')
+b_1   = theano.shared(np.zeros(20), 'b_1')
 
-w_2 = theano.shared((np.random.rand(50, 20, 5, 5) - 0.5) * 2 * np.sqrt(6 / (550.0)), 'w_2')
-b_2 = theano.shared(np.zeros(50), 'b_2')
+w_2   = theano.shared((np.random.rand(50, 20, 5, 5) - 0.5) * 2 * np.sqrt(1.5 / (550.0)), 'w_2')
+gama_2 = theano.shared(np.ones(50), 'gama_2')
+b_2   = theano.shared(np.zeros(50), 'b_2')
 
-w_3 = theano.shared((np.random.rand(4 * 4 * 50, 500) - 0.5) * 2 * np.sqrt(6 / (1300.0)), 'w_3')
-b_3 = theano.shared(np.zeros(500), 'b_3')
+w_3   = theano.shared((np.random.rand(4 * 4 * 50, 500) - 0.5) * 2 * np.sqrt(1.5 / (1300.0)), 'w_3')
+gama_3 = theano.shared(np.ones(500), 'gama_3')
+b_3   = theano.shared(np.zeros(500), 'b_3')
 
-w_4 = theano.shared((np.random.randn(500, 10) - 0.5) * 2 * np.sqrt(6 / (510.0)), 'w_4')
-b_4 = theano.shared(np.zeros(10), 'b_4')
+w_4   = theano.shared((np.random.randn(500, 10) - 0.5) * 2 * np.sqrt(1.5 / (510.0)), 'w_4')
+gama_4 = theano.shared(np.ones(10), 'gama_4')
+b_4   = theano.shared(np.zeros(10), 'b_4')
 
 ##################################################################################
 # Computational Graph
 ##################################################################################
-w1_b = binarize_theano(w_1)
-pa_1 = T.nnet.conv2d(x, w1_b) + b_1.dimshuffle('x', 0, 'x', 'x')
-a_1 = pool.pool_2d(T.tanh(pa_1), (2, 2), ignore_border=True)
+w1_b    = binarize_theano(w_1)
+pa_1    = T.nnet.conv2d(x, w1_b) 
+mu_1    = T.mean(pa_1, axis=0)
+sigma_1 = T.std(pa_1, axis=0)
+bmu_1   = ((pa_1 - mu_1)/sigma_1)*gama_1.dimshuffle('x', 0, 'x', 'x') + b_1.dimshuffle('x', 0, 'x', 'x')
+a_1     = pool.pool_2d(T.tanh(bmu_1), (2, 2), ignore_border=True)
 
-w2_b = binarize_theano(w_2)
-pa_2 = T.nnet.conv2d(a_1, w2_b) + b_2.dimshuffle('x', 0, 'x', 'x')
-a_2 = pool.pool_2d(T.tanh(pa_2), (2, 2), ignore_border=True)
+w2_b    = binarize_theano(w_2)
+pa_2    = T.nnet.conv2d(a_1, w2_b)
+mu_2    = T.mean(pa_2, axis=0)
+sigma_2 = T.std(pa_2, axis=0)
+bmu_2   = ((pa_2 - mu_2)/sigma_2)*gama_2.dimshuffle('x', 0, 'x', 'x') + b_2.dimshuffle('x', 0, 'x', 'x')
+a_2     = pool.pool_2d(T.tanh(bmu_2), (2, 2), ignore_border=True)
 
-w3_b = binarize_theano(w_3)
-pa_3 = T.dot(a_2.flatten(2), w3_b) + b_3.dimshuffle('x', 0)
-a_3 = T.tanh(pa_3)
+w3_b    = binarize_theano(w_3)
+pa_3    = T.dot(a_2.flatten(2), w3_b)
+mu_3    = T.mean(pa_3, axis=0)
+sigma_3 = T.std(pa_3, axis=0)
+bmu_3   = ((pa_3 - mu_3)/sigma_3)*gama_3.dimshuffle('x', 0) + b_3.dimshuffle('x', 0)
+a_3     = T.tanh(bmu_3)
 
-w4_b = binarize_theano(w_4)
-pa_4 = T.dot(a_3, w4_b) + b_4.dimshuffle('x', 0)
-a_4 = T.nnet.softmax(pa_4)
-y_hat = a_4
+w4_b    = binarize_theano(w_4)
+pa_4    = T.dot(a_3, w4_b)
+mu_4    = T.mean(pa_4, axis=0)
+sigma_4 = T.std(pa_4, axis=0)
+bmu_4   = ((pa_4 - mu_4)/sigma_4)*gama_4.dimshuffle('x', 0) + b_4.dimshuffle('x', 0)
+a_4     = T.nnet.softmax(bmu_4)
+y_hat   = a_4
 
 ##################################################################################
 # Parameter updates
 ##################################################################################
 cost = T.mean(T.nnet.categorical_crossentropy(y_hat, y))
 cost.name = 'CE'
-params_b  = [w1_b, b_1, w2_b , b_2, w3_b, b_3, w4_b, b_4] # Binary weights
-params    = [w_1, b_1, w_2 , b_2, w_3, b_3, w_4, b_4]     # Float weights
+params_b  = [ gama_1, w1_b, b_1, gama_2, w2_b , b_2, gama_3, w3_b, b_3, gama_4, w4_b, b_4] # Binary weights
+params    = [ gama_1, w_1,  b_1, gama_2, w_2 ,  b_2, gama_3, w_3,  b_3, gama_4, w_4,  b_4] # Float weights
 # Computing gradients with regards to binary weights
 dparams   = T.grad(cost, params_b)
 updates   = []
@@ -94,7 +110,7 @@ for i, p, dp in zip(range(len(params)), params, dparams):
 f_eval = theano.function([x], y_hat)
 f_train = theano.function([x, y], cost, updates=updates)
 f_train = theano.function([x, y], [cost, w_1], updates=updates)
-f_test = theano.function([], [w_1, binarize_theano(w_1)])
+f_test = theano.function([], [gama_1, w_1, binarize_theano(w_1)])
 
 ##################################################################################
 # Training and computing error
@@ -113,5 +129,5 @@ for e in range(20):
         batch_img = data_img[i]
         batch_tar = data_tar[i]
         cost = f_train(batch_img, batch_tar)
-        w1, w1_b = f_test()
-        #print w1_b
+        gama_1, w1, w1_b = f_test()
+        print gama_1
