@@ -13,7 +13,7 @@ from theano.sandbox.rng_mrg import MRG_RandomStreams as RandomStreams
 srng =  RandomStreams(lasagne.random.get_rng().randint(1, 214))
 data_img = np.load('train_images.npy').reshape((600, 100, 1, 28, 28)) # input dataset
 data_tar = np.load('train_labels.npy').reshape((600, 100)).astype('int64')
-alpha = 0.001
+alpha = 0.00001
 
 ##################################################################################
 # Utility Functions
@@ -39,7 +39,7 @@ y = T.lvector('y')
 # values.
 # Lets use 5*5 filter
 w_1   = theano.shared((np.random.rand(20, 1, 5, 5) - 0.5) * 2 * np.sqrt(1.5 / (45.0)), 'w_1')
-gama_1 = theano.shared(np.ones(20), 'gama_1')
+gama_1= theano.shared(np.ones(20), 'gama_1')
 b_1   = theano.shared(np.zeros(20), 'b_1')
 
 w_2   = theano.shared((np.random.rand(50, 20, 5, 5) - 0.5) * 2 * np.sqrt(1.5 / (550.0)), 'w_2')
@@ -47,11 +47,11 @@ gama_2 = theano.shared(np.ones(50), 'gama_2')
 b_2   = theano.shared(np.zeros(50), 'b_2')
 
 w_3   = theano.shared((np.random.rand(4 * 4 * 50, 500) - 0.5) * 2 * np.sqrt(1.5 / (1300.0)), 'w_3')
-gama_3 = theano.shared(np.ones(500), 'gama_3')
+gama_3= theano.shared(np.ones(500), 'gama_3')
 b_3   = theano.shared(np.zeros(500), 'b_3')
 
 w_4   = theano.shared((np.random.randn(500, 10) - 0.5) * 2 * np.sqrt(1.5 / (510.0)), 'w_4')
-gama_4 = theano.shared(np.ones(10), 'gama_4')
+gama_4= theano.shared(np.ones(10), 'gama_4')
 b_4   = theano.shared(np.zeros(10), 'b_4')
 
 ##################################################################################
@@ -60,30 +60,30 @@ b_4   = theano.shared(np.zeros(10), 'b_4')
 w1_b    = binarize_theano(w_1)
 pa_1    = T.nnet.conv2d(x, w1_b) 
 mu_1    = T.mean(pa_1, axis=0)
-sigma_1 = T.std(pa_1, axis=0)
-bmu_1   = ((pa_1 - mu_1)/sigma_1)*gama_1.dimshuffle('x', 0, 'x', 'x') + b_1.dimshuffle('x', 0, 'x', 'x')
-a_1     = pool.pool_2d(T.tanh(bmu_1), (2, 2), ignore_border=True)
+std_1   = T.std(pa_1, axis=0)
+bn_1    = ((pa_1 - mu_1)/std_1)*gama_1.dimshuffle('x', 0, 'x', 'x') + b_1.dimshuffle('x', 0, 'x', 'x')
+a_1     = pool.pool_2d(T.tanh(bn_1), (2, 2), ignore_border=True)
 
 w2_b    = binarize_theano(w_2)
 pa_2    = T.nnet.conv2d(a_1, w2_b)
 mu_2    = T.mean(pa_2, axis=0)
-sigma_2 = T.std(pa_2, axis=0)
-bmu_2   = ((pa_2 - mu_2)/sigma_2)*gama_2.dimshuffle('x', 0, 'x', 'x') + b_2.dimshuffle('x', 0, 'x', 'x')
-a_2     = pool.pool_2d(T.tanh(bmu_2), (2, 2), ignore_border=True)
+std_2   = T.std(pa_2, axis=0)
+bn_2    = ((pa_2 - mu_2)/std_2)*gama_2.dimshuffle('x', 0, 'x', 'x') + b_2.dimshuffle('x', 0, 'x', 'x')
+a_2     = pool.pool_2d(T.tanh(bn_2), (2, 2), ignore_border=True)
 
 w3_b    = binarize_theano(w_3)
 pa_3    = T.dot(a_2.flatten(2), w3_b)
 mu_3    = T.mean(pa_3, axis=0)
-sigma_3 = T.std(pa_3, axis=0)
-bmu_3   = ((pa_3 - mu_3)/sigma_3)*gama_3.dimshuffle('x', 0) + b_3.dimshuffle('x', 0)
-a_3     = T.tanh(bmu_3)
+std_3   = T.std(pa_3, axis=0)
+bn_3    = ((pa_3 - mu_3)/std_3)*gama_3.dimshuffle('x', 0) + b_3.dimshuffle('x', 0)
+a_3     = T.tanh(bn_3)
 
 w4_b    = binarize_theano(w_4)
 pa_4    = T.dot(a_3, w4_b)
 mu_4    = T.mean(pa_4, axis=0)
-sigma_4 = T.std(pa_4, axis=0)
-bmu_4   = ((pa_4 - mu_4)/sigma_4)*gama_4.dimshuffle('x', 0) + b_4.dimshuffle('x', 0)
-a_4     = T.nnet.softmax(bmu_4)
+std_4   = T.std(pa_4, axis=0)
+bn_4    = ((pa_4 - mu_4)/std_4)*gama_4.dimshuffle('x', 0) + b_4.dimshuffle('x', 0)
+a_4     = T.nnet.softmax(bn_4)
 y_hat   = a_4
 
 ##################################################################################
@@ -108,8 +108,7 @@ for i, p, dp in zip(range(len(params)), params, dparams):
 # Defining inputs and outputs
 ##################################################################################
 f_eval = theano.function([x], y_hat)
-f_train = theano.function([x, y], cost, updates=updates)
-f_train = theano.function([x, y], [cost, w_1], updates=updates)
+f_train = theano.function([x, y], [pa_1, cost], updates=updates)
 f_test = theano.function([], [gama_1, w_1, binarize_theano(w_1)])
 
 ##################################################################################
@@ -128,6 +127,6 @@ for e in range(20):
     for i in range(10):
         batch_img = data_img[i]
         batch_tar = data_tar[i]
-        cost = f_train(batch_img, batch_tar)
+        pa, cost = f_train(batch_img, batch_tar)
         gama_1, w1, w1_b = f_test()
-        print gama_1
+#        print pa
