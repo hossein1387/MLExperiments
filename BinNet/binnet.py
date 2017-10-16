@@ -61,7 +61,7 @@ b_4   = theano.shared(np.zeros(10), 'b_4')
 w1_b    = binarize_theano(w_1)
 pa_1    = T.nnet.conv2d(x, w1_b) 
 mu_1    = T.mean(pa_1, axis=0, keepdims=True)
-std_1   = T.sqrt(T.var(pa_1, axis=0, keepdims=True) + 1e-6)
+std_1   = T.sqrt(T.var(pa_1, axis=0, keepdims=True) + 1e-6) #T.std didn't work by it self on this layer, std was too small
 bn_1    = ((pa_1 - mu_1)/(std_1+epsilon))*gama_1.dimshuffle('x', 0, 'x', 'x') + b_1.dimshuffle('x', 0, 'x', 'x')
 a_1     = pool.pool_2d(T.tanh(bn_1), (2, 2), ignore_border=True)
 
