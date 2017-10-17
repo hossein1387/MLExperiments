@@ -11,19 +11,23 @@ import pdb
 ##################################################################################
 # Globals
 ##################################################################################
-srng =  RandomStreams(lasagne.random.get_rng().randint(1, 214))
-data_img = np.load('train_images.npy').reshape((600, 100, 1, 28, 28)) # input dataset
-data_tar = np.load('train_labels.npy').reshape((600, 100)).astype('int64')
-alpha = 0.001
+num_epochs = 250
 epsilon = 1e-6
+lr_start = .001
+lr_fin = 0.000003
+lr_decay = (lr_fin/lr_start)**(1./num_epochs)
+batch_size = 100
+srng =  RandomStreams(lasagne.random.get_rng().randint(1, 214))
+data_img = np.load('train_images.npy').reshape((600, batch_size, 1, 28, 28)) # input dataset
+data_tar = np.load('train_labels.npy').reshape((600, batch_size)).astype('int64')
 ##################################################################################
 # Utility Functions
 ##################################################################################
-def clip(x):
+def hard_sigmoid(x):
     return T.clip((x+1.)/2.,0,1)
 
 def binarize_theano(W):
-    Wb = clip(W)
+    Wb = hard_sigmoid(W)
     Wb = T.cast(srng.binomial(n=1, p=Wb, size=T.shape(Wb)), theano.config.floatX)
     Wb = T.cast(T.switch(Wb,1,-1), theano.config.floatX)
     return Wb
@@ -55,29 +59,30 @@ w_4   = theano.shared((np.random.randn(500, 10) - 0.5) * 2 * np.sqrt(1.5 / (510.
 gama_4= theano.shared(np.ones(10), 'gama_4')
 b_4   = theano.shared(np.zeros(10), 'b_4')
 
+lr    = T.scalar(name='lr')
 ##################################################################################
 # Computational Graph
 ##################################################################################
 w1_b    = binarize_theano(w_1)
-pa_1    = T.nnet.conv2d(x, w1_b) 
+pa_1    = T.nnet.conv2d(x, w1_b)
 mu_1    = T.mean(pa_1, axis=0, keepdims=True)
 std_1   = T.sqrt(T.var(pa_1, axis=0, keepdims=True) + 1e-6) #T.std didn't work by it self on this layer, std was too small
 bn_1    = ((pa_1 - mu_1)/(std_1+epsilon))*gama_1.dimshuffle('x', 0, 'x', 'x') + b_1.dimshuffle('x', 0, 'x', 'x')
-a_1     = pool.pool_2d(T.tanh(bn_1), (2, 2), ignore_border=True)
+a_1     = (pool.pool_2d(T.tanh(bn_1), (2, 2), ignore_border=True))
 
 w2_b    = binarize_theano(w_2)
 pa_2    = T.nnet.conv2d(a_1, w2_b)
 mu_2    = T.mean(pa_2, axis=0, keepdims=True)
 std_2   = T.std(pa_2, axis=0, keepdims=True)
 bn_2    = ((pa_2 - mu_2)/(std_2+epsilon))*gama_2.dimshuffle('x', 0, 'x', 'x') + b_2.dimshuffle('x', 0, 'x', 'x')
-a_2     = pool.pool_2d(T.tanh(bn_2), (2, 2), ignore_border=True)
+a_2     = (pool.pool_2d(T.tanh(bn_2), (2, 2), ignore_border=True))
 
 w3_b    = binarize_theano(w_3)
 pa_3    = T.dot(a_2.flatten(2), w3_b)
 mu_3    = T.mean(pa_3, axis=0, keepdims=True)
 std_3   = T.std(pa_3, axis=0, keepdims=True)
 bn_3    = ((pa_3 - mu_3)/(std_3+epsilon))*gama_3.dimshuffle('x', 0) + b_3.dimshuffle('x', 0)
-a_3     = T.tanh(bn_3)
+a_3     = (T.tanh(bn_3))
 
 w4_b    = binarize_theano(w_4)
 pa_4    = T.dot(a_3, w4_b)
@@ -99,34 +104,41 @@ dparams   = T.grad(cost, params_b)
 updates   = []
 
 for i, p, dp in zip(range(len(params)), params, dparams):
-    p_val = p.get_value()   
+    p_val = p.get_value()
     if len(p_val.shape) > 1:
-        updates += [(p, clip(p - alpha * dp))]
+        updates += [(p, T.clip(p - (lr * dp), -1, 1))]
     else:
-        updates += [(p, p - alpha * dp)]
+        updates += [(p, p - lr * dp)]
 
 ##################################################################################
 # Defining inputs and outputs
 ##################################################################################
 f_eval  = theano.function([x], y_hat)
-f_train = theano.function([x, y], [pa_1, cost], updates=updates)
+f_train = theano.function([x, lr, y], [pa_1, cost], updates=updates)
 f_pa_1  = theano.function([x], [T.sqrt(T.sum(std_1 ** 2)), T.sqrt(T.sum(bn_1**2))])
 ##################################################################################
 # Training and computing error
 ##################################################################################
 
-for e in range(20):
+learning_rate = lr_start
+for e in range(num_epochs):
     batch_errs = []
-    for i in range(10):
+    learning_rate *= lr_decay
+    print "learning_rate:" + str(learning_rate)
+    for i in range(batch_size):
+        batch_img = data_img[i] / 255.0
+        batch_tar = data_tar[i]
+        pa, cost  = f_train(batch_img, learning_rate, batch_tar)
+    for i in range(batch_size):
         batch_img = data_img[i] / 255.0
         batch_tar = data_tar[i]
         pred = np.argmax(f_eval(batch_img), axis=1)
         batch_err = (batch_tar == pred).astype('int').sum() / 100.0
         batch_errs += [batch_err]
         # import pdb; pdb.set_trace()
-    print 'error: ' + str((1 - np.mean(batch_errs)) * 100)
-    for i in range(10):
-        batch_img = data_img[i] / 255.0
-        batch_tar = data_tar[i]
-        pa, cost  = f_train(batch_img, batch_tar)
-        print w_4.eval()
+    print 'error: ' + str((1 - np.mean(batch_errs)) * 100) + "\n"
+#        w1_ = w_1.eval()
+#        w1_b_ = w1_b.eval()
+#        print "mean(w1_b):" + str(np.mean(w1_b_))
+#        print "w1_b:" + str(w1_b_)
+#        import pdb; pdb.set_trace()
