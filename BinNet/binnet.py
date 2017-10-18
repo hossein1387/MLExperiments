@@ -11,7 +11,8 @@ import pdb
 ##################################################################################
 # Globals
 ##################################################################################
-num_epochs = 250
+H = 1
+num_epochs = 10
 epsilon = 1e-6
 lr_start = .001
 lr_fin = 0.000003
@@ -26,9 +27,12 @@ data_tar = np.load('train_labels.npy').reshape((600, batch_size)).astype('int64'
 def hard_sigmoid(x):
     return T.clip((x+1.)/2.,0,1)
 
-def binarize_theano(W):
+def binarize_theano(W, stochastic=False):
     Wb = hard_sigmoid(W)
-    Wb = T.cast(srng.binomial(n=1, p=Wb, size=T.shape(Wb)), theano.config.floatX)
+    if stochastic:
+        Wb = T.cast(srng.binomial(n=1, p=Wb, size=T.shape(Wb)), theano.config.floatX)
+    else:
+        Wb = T.round(Wb)
     Wb = T.cast(T.switch(Wb,1,-1), theano.config.floatX)
     return Wb
 
@@ -68,21 +72,21 @@ pa_1    = T.nnet.conv2d(x, w1_b)
 mu_1    = T.mean(pa_1, axis=0, keepdims=True)
 std_1   = T.sqrt(T.var(pa_1, axis=0, keepdims=True) + 1e-6) #T.std didn't work by it self on this layer, std was too small
 bn_1    = ((pa_1 - mu_1)/(std_1+epsilon))*gama_1.dimshuffle('x', 0, 'x', 'x') + b_1.dimshuffle('x', 0, 'x', 'x')
-a_1     = (pool.pool_2d(T.tanh(bn_1), (2, 2), ignore_border=True))
+a_1     = binarize_theano(pool.pool_2d(T.tanh(bn_1), (2, 2), ignore_border=True))
 
 w2_b    = binarize_theano(w_2)
 pa_2    = T.nnet.conv2d(a_1, w2_b)
 mu_2    = T.mean(pa_2, axis=0, keepdims=True)
 std_2   = T.std(pa_2, axis=0, keepdims=True)
 bn_2    = ((pa_2 - mu_2)/(std_2+epsilon))*gama_2.dimshuffle('x', 0, 'x', 'x') + b_2.dimshuffle('x', 0, 'x', 'x')
-a_2     = (pool.pool_2d(T.tanh(bn_2), (2, 2), ignore_border=True))
+a_2     = binarize_theano(pool.pool_2d(T.tanh(bn_2), (2, 2), ignore_border=True))
 
 w3_b    = binarize_theano(w_3)
 pa_3    = T.dot(a_2.flatten(2), w3_b)
 mu_3    = T.mean(pa_3, axis=0, keepdims=True)
 std_3   = T.std(pa_3, axis=0, keepdims=True)
 bn_3    = ((pa_3 - mu_3)/(std_3+epsilon))*gama_3.dimshuffle('x', 0) + b_3.dimshuffle('x', 0)
-a_3     = (T.tanh(bn_3))
+a_3     = binarize_theano(T.tanh(bn_3))
 
 w4_b    = binarize_theano(w_4)
 pa_4    = T.dot(a_3, w4_b)
@@ -103,7 +107,7 @@ params    = [ gama_1, w_1,  b_1, gama_2, w_2 ,  b_2, gama_3, w_3,  b_3, gama_4, 
 dparams   = T.grad(cost, params_b)
 updates   = []
 
-for i, p, dp in zip(range(len(params)), params, dparams):
+for p, dp in zip(params, dparams):
     p_val = p.get_value()
     if len(p_val.shape) > 1:
         updates += [(p, T.clip(p - (lr * dp), -1, 1))]
@@ -116,6 +120,7 @@ for i, p, dp in zip(range(len(params)), params, dparams):
 f_eval  = theano.function([x], y_hat)
 f_train = theano.function([x, lr, y], [pa_1, cost], updates=updates)
 f_pa_1  = theano.function([x], [T.sqrt(T.sum(std_1 ** 2)), T.sqrt(T.sum(bn_1**2))])
+f_get_grad = theano.function([x, y], dparams)
 ##################################################################################
 # Training and computing error
 ##################################################################################
@@ -123,22 +128,32 @@ f_pa_1  = theano.function([x], [T.sqrt(T.sum(std_1 ** 2)), T.sqrt(T.sum(bn_1**2)
 learning_rate = lr_start
 for e in range(num_epochs):
     batch_errs = []
-    learning_rate *= lr_decay
     print "learning_rate:" + str(learning_rate)
-    for i in range(batch_size):
+    for i in range(batch_size/10):
         batch_img = data_img[i] / 255.0
         batch_tar = data_tar[i]
         pa, cost  = f_train(batch_img, learning_rate, batch_tar)
-    for i in range(batch_size):
+    for i in range(batch_size/10):
         batch_img = data_img[i] / 255.0
         batch_tar = data_tar[i]
         pred = np.argmax(f_eval(batch_img), axis=1)
         batch_err = (batch_tar == pred).astype('int').sum() / 100.0
         batch_errs += [batch_err]
-        # import pdb; pdb.set_trace()
-    print 'error: ' + str((1 - np.mean(batch_errs)) * 100) + "\n"
-#        w1_ = w_1.eval()
-#        w1_b_ = w1_b.eval()
+        w1_   = w_1.eval()
+        w2_   = w_2.eval()
+        w3_   = w_3.eval()
+        w4_   = w_4.eval()
+        w1_b_ = w1_b.eval()
+        w2_b_ = w2_b.eval()
+        w3_b_ = w3_b.eval()
+        w4_b_ = w4_b.eval()
 #        print "mean(w1_b):" + str(np.mean(w1_b_))
+#        import pdb; pdb.set_trace()
 #        print "w1_b:" + str(w1_b_)
 #        import pdb; pdb.set_trace()
+#    for dp in dparams:
+#        print dp.eval()
+    learning_rate *= lr_decay
+    print 'error: ' + str((1 - np.mean(batch_errs)) * 100) + "\n"
+#    dparams_ = f_get_grad(batch_img, batch_tar)
+#    import pdb; pdb.set_trace()
