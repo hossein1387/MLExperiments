@@ -4,7 +4,7 @@ My Implementation of BinaryConnect. Read the paper [here](https://arxiv.org/abs/
 Please refer to the [original implementation](https://github.com/MatthieuCourbariaux/BinaryConnect) of BinnaryConnect for more information.
 Here is how the layers are computed:
 
-<img src="https://github.com/hossein1387/MLExperiments/blob/mnist/Figs/binnect_ak.png" width="700" />
+<img src="https://github.com/hossein1387/MLExperiments/blob/master/Figs/binnect_ak.png" width="700" />
 
 ## Copyright
 
