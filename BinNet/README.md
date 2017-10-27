@@ -1,6 +1,6 @@
 ## Linear Regression
 
-My Implementation of BinaryConnect. Read the paper [here](https://arxiv.org/abs/1511.00363)
+My Implementation of BinaryConnect. Read the paper [here](https://arxiv.org/abs/1511.00363).
 Please refer to the [original implementation](https://github.com/MatthieuCourbariaux/BinaryConnect) of BinnaryConnect for more information.
 Here is how the layers are computed:
 
