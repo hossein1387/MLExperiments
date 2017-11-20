@@ -6,6 +6,10 @@ Here is how the layers are computed:
 
 <img src="https://github.com/hossein1387/MLExperiments/blob/master/Figs/binnect_ak.png" width="700" />
 
+The Following image shows the my Binary Net implementation architecture:
+
+<img src="https://github.com/hossein1387/MLExperiments/blob/master/Figs/bnn_arch.png" width="700" />
+
 ## Copyright
 
 Copyright (c) 2017 [hossein1387](http://hossein1387.github.io/).
