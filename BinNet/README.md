@@ -8,7 +8,9 @@ Here is how the layers are computed:
 
 The Following image shows the my Binary Net implementation architecture:
 
-<img src="https://github.com/hossein1387/MLExperiments/blob/master/Figs/bnn_arch.png" width="700" />
+<p align="center">
+	<img src="https://github.com/hossein1387/MLExperiments/blob/master/Figs/bnn_arch.png" width="700" />
+</p>
 
 ## Copyright
 
