@@ -1,0 +1,23 @@
+LENET:
+    dataset: 'mnist'
+    lr: 0.001
+    batchsize: 100
+    num_epochs: 100
+    model_type: "lenet"
+    init_type: glorot
+    operation_mode: "normal"
+    trained_model: ""
+    quantization: ""
+    # operation_mode: "retrain"
+    # trained_model: "./trained_model.pkl"
+    # quantization: "binary"
+MLP:
+    dataset: 'mnist'
+    lr: 0.001
+    batchsize: 100
+    num_epochs: 100
+    model_type: "mlp"
+    init_type: glorot
+    operation_mode: "normal"
+    trained_model: ""
+    quantization: ""
