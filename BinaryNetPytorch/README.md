@@ -1,1 +1,1 @@
-Pytirch Implementation of Binary Connect Paper
+Pytorch Implementation of Binary Connect Paper
