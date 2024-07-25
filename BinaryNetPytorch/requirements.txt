@@ -3,7 +3,7 @@ ipdb==0.11
 numpy==1.22.0
 pandas==0.22.0
 seaborn==0.8.1
-torch==0.3.1.post2
+torch==2.2.0
 functional==0.7.0
 torchvision==0.2.1
 pyyaml>=4.2b1
